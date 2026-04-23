@@ -1,28 +1,17 @@
-"""Идентификация и аутентификация пользователей.
-
-В объединённой версии проекта доступны два демо-варианта входа:
-- по логину и постоянному паролю;
-- по токену (как дополнительная демонстрация расширяемости).
-
-Основной вариант для защиты лабораторной: постоянный пароль.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
 
-from data_sample import ROLE_LABELS, TOKENS, USERS
+from data_sample import ROLE_LABELS, USERS, hash_password
 
 
 @dataclass(frozen=True)
 class SessionUser:
     login: str
     full_name: str
-    roles: tuple[str, ...]
+    role: str
+    student_id: int | None
     teacher_id: int | None
-    departments: tuple[int, ...]
-    group: str | None
-    salary: int | None
     auth_method: str
 
 
@@ -34,28 +23,19 @@ class AuthService:
         if not self.identify(login):
             return None
         user = USERS[login]
-        if user["password"] != password:
+        if not user["is_active"]:
             return None
-        return self._build_session(login, user, "password")
-
-    def authenticate_token(self, token: str) -> SessionUser | None:
-        login = TOKENS.get(token)
-        if login is None:
+        if user["password_hash"] != hash_password(password):
             return None
-        return self._build_session(login, USERS[login], "token")
-
-    def _build_session(self, login: str, user: dict, auth_method: str) -> SessionUser:
         return SessionUser(
             login=login,
             full_name=user["full_name"],
-            roles=tuple(user["roles"]),
+            role=user["role"],
+            student_id=user["student_id"],
             teacher_id=user["teacher_id"],
-            departments=tuple(user["departments"]),
-            group=user.get("group"),
-            salary=user.get("salary"),
-            auth_method=auth_method,
+            auth_method="password",
         )
 
     @staticmethod
-    def roles_as_text(roles: Iterable[str]) -> str:
-        return ", ".join(ROLE_LABELS.get(role, role) for role in roles)
+    def role_as_text(role: str) -> str:
+        return ROLE_LABELS.get(role, role)

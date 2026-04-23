@@ -1,112 +1,106 @@
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import ttk
 
-from data_sample import SCHEDULE_DATA
+from data_sample import DAY_ORDER, SCHEDULE_DATA, STUDENTS, TEACHERS
+from services.auth import SessionUser
 from ui.theme import COLORS, FONT
 
 
 class ScheduleModule:
-    def __init__(self, host_frame: tk.Frame) -> None:
+    def __init__(self, host_frame: tk.Frame, current_user: SessionUser) -> None:
         self.host_frame = host_frame
+        self.current_user = current_user
 
     def render(self) -> None:
         self._clear()
         tk.Label(
             self.host_frame,
-            text="РАСПИСАНИЕ ЗАНЯТИЙ",
+            text="РАСПИСАНИЕ",
             font=(FONT, 18, "bold"),
             bg=COLORS["frame"],
             fg=COLORS["accent"],
-        ).pack(pady=(10, 5))
+        ).pack(pady=(15, 6))
+        notebook = ttk.Notebook(self.host_frame)
+        notebook.pack(fill="both", expand=True, padx=14, pady=(0, 12))
 
-        container = tk.Frame(self.host_frame, bg=COLORS["frame"])
-        container.pack(fill="both", expand=True)
+        columns = ("pair", "time", "subject", "room", "teacher", "lesson_type", "format")
+        headings = {
+            "pair": "Пара",
+            "time": "Время",
+            "subject": "Дисциплина",
+            "room": "Ауд.",
+            "teacher": "Преподаватель",
+            "lesson_type": "Тип",
+            "format": "Формат",
+        }
+        widths = {
+            "pair": 55,
+            "time": 110,
+            "subject": 250,
+            "room": 80,
+            "teacher": 230,
+            "lesson_type": 130,
+            "format": 120,
+        }
 
-        canvas = tk.Canvas(container, bg=COLORS["frame"], highlightthickness=0)
-        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=COLORS["frame"])
-        scrollable_frame.bind("<Configure>", lambda _: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        visible = self._visible_schedule()
+        for day in DAY_ORDER:
+            tab = tk.Frame(notebook, bg=COLORS["frame"])
+            notebook.add(tab, text=day)
 
-        days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
-        headers = ["Пара", "Время", "Период", "Дисциплина", "Ауд.", "Преподаватель", "Тип", "Формат"]
+            tree = ttk.Treeview(tab, columns=columns, show="headings", height=16)
+            for key, title in headings.items():
+                tree.heading(key, text=title)
+                tree.column(key, width=widths[key], anchor="center" if key in {"pair", "room"} else "w")
 
-        for day in days:
-            day_schedule = [item for item in SCHEDULE_DATA if item["day"] == day]
-            if not day_schedule:
-                continue
-            day_frame = tk.LabelFrame(
-                scrollable_frame,
-                text=day,
-                font=(FONT, 13, "bold"),
-                bg=COLORS["frame"],
-                fg=COLORS["accent"],
-                bd=2,
-                relief="groove",
-            )
-            day_frame.pack(fill="x", pady=12, padx=12)
-            rows = []
-            for item in sorted(day_schedule, key=lambda x: x["pair"]):
-                fmt = "● Очно" if item["format"] == "Очно" else "○ Дистант"
-                rows.append([
-                    str(item["pair"]),
-                    item["time"],
-                    f"{item['period_start']}-{item['period_end']}",
-                    item["subject"],
-                    item["room"],
-                    item["teacher"],
-                    item["type"],
-                    fmt,
-                ])
-            self._create_table(day_frame, headers, rows)
+            day_records = [item for item in visible if item["day"] == day]
+            for item in day_records:
+                tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        item["pair"],
+                        item["time"],
+                        item["subject"],
+                        self._room_text(item),
+                        self._teacher_name(item["teacher_id"]),
+                        item["lesson_type"],
+                        self._format_text(item["format"]),
+                    ),
+                )
+            tree.pack(fill="both", expand=True)
 
-    def render_stub(self, title: str, text: str) -> None:
-        self._clear()
-        tk.Label(self.host_frame, text=title, font=(FONT, 18, "bold"), bg=COLORS["frame"], fg=COLORS["accent"]).pack(pady=(30, 20))
-        tk.Label(self.host_frame, text=text, font=(FONT, 12), bg=COLORS["frame"], fg=COLORS["text"]).pack()
-
-    def _create_table(self, parent: tk.Widget, headers: list[str], rows: list[list[str]]) -> None:
-        header_frame = tk.Frame(parent, bg=COLORS["button"])
-        header_frame.pack(fill="x", pady=(0, 2))
-        col_widths = [50, 100, 100, 180, 70, 180, 110, 90]
-
-        for idx, (header, width) in enumerate(zip(headers, col_widths)):
-            tk.Label(
-                header_frame,
-                text=header,
-                font=(FONT, 9, "bold"),
-                bg=COLORS["button"],
-                fg=COLORS["text"],
-                width=width // 7,
-                anchor="center",
-                padx=4,
-                pady=4,
-            ).grid(row=0, column=idx, sticky="nsew")
-            header_frame.grid_columnconfigure(idx, weight=1)
-
-        for row_data in rows:
-            is_online = row_data[7] == "● Очно"
-            row_bg = COLORS["online_bg"] if is_online else COLORS["offline_bg"]
-            text_color = COLORS["online_text"] if is_online else COLORS["offline_text"]
-            row_frame = tk.Frame(parent, bg=row_bg)
-            row_frame.pack(fill="x", pady=1)
-            for idx, (val, width) in enumerate(zip(row_data, col_widths)):
+            if not day_records:
                 tk.Label(
-                    row_frame,
-                    text=val,
-                    font=(FONT, 9),
-                    bg=row_bg,
-                    fg=text_color,
-                    width=width // 7,
-                    anchor="center",
-                    padx=4,
-                    pady=4,
-                ).grid(row=0, column=idx, sticky="nsew")
-                row_frame.grid_columnconfigure(idx, weight=1)
+                    tab,
+                    text="На этот день занятий нет.",
+                    font=(FONT, 11),
+                    bg=COLORS["frame"],
+                    fg=COLORS["subtext"],
+                ).place(relx=0.5, rely=0.5, anchor="center")
+
+    def _visible_schedule(self) -> list[dict]:
+        records = list(SCHEDULE_DATA)
+        if self.current_user.role == "student" and self.current_user.student_id is not None:
+            group = next(student["group"] for student in STUDENTS if student["id"] == self.current_user.student_id)
+            records = [item for item in records if item["group"] == group]
+        elif self.current_user.role == "teacher" and self.current_user.teacher_id is not None:
+            records = [item for item in records if item["teacher_id"] == self.current_user.teacher_id]
+        return sorted(records, key=lambda item: (DAY_ORDER[item["day"]], item["pair"], item["group"]))
+
+    def _teacher_name(self, teacher_id: int) -> str:
+        teacher = next(item for item in TEACHERS if item["id"] == teacher_id)
+        return teacher["full_name"]
+
+    def _room_text(self, item: dict) -> str:
+        if item["format"] == "Дистанционная":
+            return "-"
+        return item["room"].split("-")[-1]
+
+    def _format_text(self, value: str) -> str:
+        return "Дистант" if value == "Дистанционная" else "Очно"
 
     def _clear(self) -> None:
         for widget in self.host_frame.winfo_children():
