@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд — Виртуальный Деканат{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1 class="page-title">Добро пожаловать, {{ current_user.full_name }}!</h1>
+</div>
+
+<div class="grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+    <!-- Welcome Card -->
+    <div class="card glass" style="grid-column: span 2;">
+        <h2 style="margin-bottom: 1rem; color: var(--accent-color);">Сводная информация</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Вы вошли как <strong>{{ role_labels.get(current_user.role) }}</strong>. Здесь вы можете быстро получить доступ к основным разделам системы.</p>
+        
+        {% if current_user.role == 'student' and student %}
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="lesson-item" style="border-left-color: var(--success-color);">
+                <div class="user-role">Группа</div>
+                <div class="lesson-name">{{ student.study_group }}</div>
+            </div>
+            <div class="lesson-item" style="border-left-color: var(--warning-color);">
+                <div class="user-role">Зачётная книжка</div>
+                <div class="lesson-name">{{ student.record_book }}</div>
+            </div>
+            <div class="lesson-item">
+                <div class="user-role">Курс</div>
+                <div class="lesson-name">{{ student.course }} курс</div>
+            </div>
+            <div class="lesson-item">
+                <div class="user-role">Статус</div>
+                <div class="lesson-name"><span class="badge badge-success">{{ student.status }}</span></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Stats / Actions -->
+    <div class="card glass">
+        <h3 style="margin-bottom: 1.5rem;">Быстрые ссылки</h3>
+        <div class="nav-links">
+            <li class="nav-item"><a href="{{ url_for('schedule') }}">📅 Посмотреть расписание</a></li>
+            {% if current_user.role == 'student' %}
+            <li class="nav-item"><a href="{{ url_for('grades') }}">📈 Мои оценки</a></li>
+            <li class="nav-item"><a href="{{ url_for('finance') }}">💰 Оплатить обучение</a></li>
+            {% endif %}
+            {% if current_user.role == 'administrator' %}
+            <li class="nav-item"><a href="{{ url_for('users') }}">⚙️ Управление пользователями</a></li>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

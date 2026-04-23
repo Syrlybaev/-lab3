@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход — Виртуальный Деканат</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="login-page">
+    <div class="login-card glass">
+        <div class="login-header">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🏛️</div>
+            <h1>Вход в систему</h1>
+            <p>Добро пожаловать в Виртуальный Деканат</p>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="badge badge-error" style="display: block; margin-bottom: 1rem; text-align: center;">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        
+        <form action="{{ url_for('login') }}" method="POST">
+            <div class="form-group">
+                <label for="login">Логин</label>
+                <input type="text" id="login" name="login" required placeholder="admin_demo">
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Войти</button>
+        </form>
+        
+        <div style="margin-top: 2rem; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
+            <p>Демо-данные:</p>
+            <p>admin_demo / admin2026</p>
+            <p>student_demo / stud2026</p>
+        </div>
+    </div>
+</body>
+</html>

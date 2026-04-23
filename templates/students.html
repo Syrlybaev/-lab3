@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Студенты — Виртуальный Деканат{% endblock %}
+{% block content %}
+<div class="header">
+    <h1 class="page-title">Управление студентами</h1>
+    {% if rbac.check(current_user.role, 'students', 'manage').allowed %}
+    <button class="btn btn-primary" onclick="openModal('add')">➕ Добавить студента</button>
+    {% endif %}
+</div>
+
+<div class="card glass table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ФИО</th>
+                <th>Группа</th>
+                <th>Зачётная книжка</th>
+                <th>Курс</th>
+                <th>Статус</th>
+                {% if rbac.check(current_user.role, 'students', 'manage').allowed %}
+                <th>Действия</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr>
+                <td>{{ s.id }}</td>
+                <td>{{ s.full_name }}</td>
+                <td>{{ s.study_group }}</td>
+                <td>{{ s.record_book }}</td>
+                <td>{{ s.course }}</td>
+                <td><span class="badge badge-success">{{ s.status }}</span></td>
+                {% if rbac.check(current_user.role, 'students', 'manage').allowed %}
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" 
+                                onclick='openModal("edit", {{ s|tojson }})'>✏️</button>
+                        <form action="{{ url_for('delete_student', student_id=s.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Удалить студента?')">
+                            <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: var(--error-color);">🗑️</button>
+                        </form>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div id="studentModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card glass" style="width: 100%; max-width: 500px; padding: 2rem;">
+        <h2 id="modalTitle" style="margin-bottom: 1.5rem; color: var(--accent-color);">Добавить студента</h2>
+        <form id="studentForm" action="{{ url_for('add_student') }}" method="POST">
+            <div class="form-group">
+                <label>ФИО студента</label>
+                <input type="text" name="full_name" id="f_name" required>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Группа</label>
+                    <input type="text" name="study_group" id="f_group" required>
+                </div>
+                <div class="form-group">
+                    <label>Зачётная книжка</label>
+                    <input type="text" name="record_book" id="f_record" required>
+                </div>
+                <div class="form-group">
+                    <label>Курс</label>
+                    <input type="number" name="course" id="f_course" min="1" max="6" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Статус</label>
+                    <select name="status" id="f_status">
+                        <option value="Активен">Активен</option>
+                        <option value="Академ">Академ</option>
+                        <option value="Отчислен">Отчислен</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Направление</label>
+                <input type="text" name="program" id="f_program">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Форма</label>
+                    <select name="study_form" id="f_form">
+                        <option value="Очная">Очная</option>
+                        <option value="Заочная">Заочная</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Основание</label>
+                    <select name="funding" id="f_funding">
+                        <option value="Бюджет">Бюджет</option>
+                        <option value="Договор">Договор</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                <button type="button" class="btn glass" onclick="closeModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">Добавить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(mode, data = null) {
+    const modal = document.getElementById('studentModal');
+    const form = document.getElementById('studentForm');
+    const title = document.getElementById('modalTitle');
+    const btn = document.getElementById('submitBtn');
+    
+    if (mode === 'edit' && data) {
+        title.innerText = "Редактировать данные";
+        btn.innerText = "Сохранить";
+        form.action = "/students/edit/" + data.id;
+        
+        document.getElementById('f_name').value = data.full_name;
+        document.getElementById('f_group').value = data.study_group;
+        document.getElementById('f_record').value = data.record_book;
+        document.getElementById('f_course').value = data.course;
+        document.getElementById('f_program').value = data.program;
+        document.getElementById('f_status').value = data.status;
+        document.getElementById('f_form').value = data.study_form;
+        document.getElementById('f_funding').value = data.funding;
+    } else {
+        title.innerText = "Добавить нового студента";
+        btn.innerText = "Добавить";
+        form.action = "{{ url_for('add_student') }}";
+        form.reset();
+    }
+    modal.style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('studentModal').style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Оценки — Виртуальный Деканат{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1 class="page-title">Журнал успеваемости</h1>
+    {% if current_user.role in ['teacher', 'administrator'] %}
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Группа:</span>
+            <select class="glass" id="groupFilter" onchange="applyFilter()" style="padding: 0.4rem; width: auto;">
+                <option value="Все">Все группы</option>
+                {% for group in groups %}
+                <option value="{{ group }}" {{ 'selected' if selected_group == group }}>{{ group }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('add')">➕ Выставить оценку</button>
+    </div>
+    {% endif %}
+</div>
+
+{% if current_user.role == 'student' %}
+<div class="card glass" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem;">
+    <div>
+        <span style="color: var(--text-secondary);">Средний рейтинг:</span>
+        {% set total_score = 0 %}
+        {% set count = grades|length %}
+        {% for g in grades %}
+            {% set total_score = total_score + (g.m1 + g.m2) / 2 %}
+        {% endfor %}
+        <span style="font-size: 1.5rem; font-weight: 700; color: var(--success-color); margin-left: 0.5rem;">
+            {{ (total_score / count)|round(1) if count > 0 else '0.0' }}
+        </span>
+    </div>
+    <select class="glass" style="width: auto; padding: 0.4rem 1rem;">
+        <option>Осенний семестр 2026</option>
+        <option>Весенний семестр 2026</option>
+    </select>
+</div>
+{% endif %}
+
+<div class="card glass table-container">
+    <table>
+        <thead>
+            <tr>
+                {% if current_user.role in ['teacher', 'administrator'] %}
+                <th>Студент</th>
+                {% endif %}
+                <th>Дисциплина</th>
+                <th>М1</th>
+                <th>М2</th>
+                <th>З (Зачет)</th>
+                <th>Э (Экзамен)</th>
+                <th>Коэфф.</th>
+                <th>Итог</th>
+                <th>Статус</th>
+                {% if current_user.role in ['teacher', 'administrator'] %}
+                <th>Действие</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for g in grades %}
+            <tr>
+                {% if current_user.role in ['teacher', 'administrator'] %}
+                <td>{{ students[g.student_id].full_name }}</td>
+                {% endif %}
+                <td>{{ g.subject }}</td>
+                <td>{{ g.m1 }}</td>
+                <td>{{ g.m2 }}</td>
+                <td><span class="{{ 'badge badge-success' if g.credit != '-' else '' }}">{{ g.credit }}</span></td>
+                <td><span class="{{ 'badge badge-primary' if g.exam != '-' else '' }}">{{ g.exam }}</span></td>
+                <td>{{ g.coefficient }}</td>
+                <td>
+                    <span style="font-weight: 700; color: var(--accent-color);">
+                        {{ grade_label(((g.m1 + g.m2) / 2)|int) }}
+                    </span>
+                </td>
+                <td><span class="badge badge-success">{{ g.status }}</span></td>
+                {% if current_user.role in ['teacher', 'administrator'] %}
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" 
+                                onclick='openModal("edit", {{ g|tojson }})'>✏️</button>
+                        <form action="{{ url_for('delete_grade', grade_id=g.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Удалить оценку?')">
+                            <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: var(--error-color);">🗑️</button>
+                        </form>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div id="gradeModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card glass" style="width: 100%; max-width: 500px; padding: 2rem;">
+        <h2 id="modalTitle" style="margin-bottom: 1.5rem; color: var(--accent-color);">Редактировать оценку</h2>
+        <form id="gradeForm" action="{{ url_for('update_grade') }}" method="POST">
+            <input type="hidden" name="grade_id" id="field_id">
+            <input type="hidden" name="current_group" value="{{ selected_group if selected_group else '' }}">
+            
+            <div id="addFields" style="display: none;">
+                <div class="form-group">
+                    <label>Студент</label>
+                    <select name="student_id" id="field_student_id">
+                        {% for s in all_students %}
+                        <option value="{{ s.id }}">{{ s.full_name }} ({{ s.study_group }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Дисциплина</label>
+                    <select name="subject" id="field_subject">
+                        {% for sub in teacher_subjects %}
+                        <option value="{{ sub }}">{{ sub }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div id="studentInfo" style="margin-bottom: 1rem; font-weight: 600; color: var(--accent-color);"></div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Модуль 1</label>
+                    <input type="number" name="m1" id="field_m1" min="0" max="54" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Модуль 2</label>
+                    <input type="number" name="m2" id="field_m2" min="0" max="54" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Зачет (балл)</label>
+                    <input type="text" name="credit" id="field_credit" value="-">
+                </div>
+                <div class="form-group">
+                    <label>Экзамен (балл)</label>
+                    <input type="text" name="exam" id="field_exam" value="-">
+                </div>
+                <div class="form-group">
+                    <label>Коэффициент</label>
+                    <input type="number" step="0.1" name="coefficient" id="field_coeff" value="1.0">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Статус</label>
+                <select name="status" id="field_status">
+                    <option value="Черновик">Черновик</option>
+                    <option value="Подтверждена">Подтверждена</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                <button type="button" class="btn glass" onclick="closeModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function applyFilter() {
+    const group = document.getElementById('groupFilter').value;
+    window.location.href = "{{ url_for('grades') }}?group=" + group;
+}
+
+function openModal(mode, gradeData = null) {
+    const modal = document.getElementById('gradeModal');
+    const title = document.getElementById('modalTitle');
+    const addFields = document.getElementById('addFields');
+    const studentInfo = document.getElementById('studentInfo');
+    
+    if (mode === 'edit' && gradeData) {
+        title.innerText = "Редактировать оценку";
+        addFields.style.display = 'none';
+        studentInfo.style.display = 'block';
+        studentInfo.innerText = gradeData.subject + " — " + (document.querySelector(`tr[onclick*="${gradeData.id}"] td:first-child`)?.innerText || "");
+        
+        document.getElementById('field_id').value = gradeData.id;
+        document.getElementById('field_m1').value = gradeData.m1;
+        document.getElementById('field_m2').value = gradeData.m2;
+        document.getElementById('field_credit').value = gradeData.credit;
+        document.getElementById('field_exam').value = gradeData.exam;
+        document.getElementById('field_status').value = gradeData.status;
+        document.getElementById('field_coeff').value = gradeData.coefficient || 1.0;
+    } else {
+        title.innerText = "Выставить новую оценку";
+        addFields.style.display = 'block';
+        studentInfo.style.display = 'none';
+        
+        document.getElementById('field_id').value = "";
+        document.getElementById('field_m1').value = 0;
+        document.getElementById('field_m2').value = 0;
+        document.getElementById('field_credit').value = "-";
+        document.getElementById('field_exam').value = "-";
+        document.getElementById('field_coeff').value = 1.0;
+        document.getElementById('field_status').value = "Черновик";
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('gradeModal').style.display = 'none';
+}
+</script>
+{% endblock %}

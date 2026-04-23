@@ -2,36 +2,44 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from data_sample import ROLE_LABELS
+from services.utils import ROLE_LABELS
 
 ACL: dict[str, dict[str, set[str]]] = {
     "schedule": {
-        "view": {"student", "teacher", "administrator"},
+        "view":   {"student", "teacher", "administrator"},
+        "edit":   {"administrator"},
     },
     "grades": {
         "view_own": {"student"},
-        "view_all": {"teacher", "administrator"},
-        "edit": {"teacher", "administrator"},
+        "view_all": {"teacher", "administrator", "accountant"},
+        "edit":     {"teacher", "administrator"},
     },
     "students": {
-        "view": {"teacher", "administrator"},
+        "view":   {"teacher", "administrator"},
+        "manage": {"administrator"},
     },
     "teachers": {
-        "view": {"administrator"},
+        "view":   {"administrator"},
         "manage": {"administrator"},
     },
     "users": {
-        "view": {"administrator"},
+        "view":   {"administrator"},
         "manage": {"administrator"},
+    },
+    "finance": {
+        "view_own": {"student"},
+        "view_all": {"accountant", "administrator"},
+        "manage":   {"accountant", "administrator"},
     },
 }
 
-MENU_SECTIONS = [
-    {"resource": "schedule", "title": "Расписание"},
-    {"resource": "grades", "title": "Оценки"},
-    {"resource": "students", "title": "Студенты"},
-    {"resource": "teachers", "title": "Преподаватели"},
-    {"resource": "users", "title": "Управление пользователями"},
+MENU_SECTIONS: list[dict[str, str]] = [
+    {"resource": "schedule", "title": "📅  Расписание"},
+    {"resource": "grades",   "title": "📊  Оценки"},
+    {"resource": "students", "title": "🎓  Студенты"},
+    {"resource": "teachers", "title": "👨‍🏫  Преподаватели"},
+    {"resource": "finance",  "title": "💰  Бухгалтерия"},
+    {"resource": "users",    "title": "⚙️  Пользователи"},
 ]
 
 

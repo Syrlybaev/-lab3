@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Расписание — Виртуальный Деканат{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1 class="page-title">Расписание занятий</h1>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Группа:</span>
+            <select class="glass" id="groupFilter" onchange="applyFilters()" style="padding: 0.4rem; width: auto;">
+                <option value="Все">Все группы</option>
+                {% for group in groups %}
+                <option value="{{ group }}" {{ 'selected' if selected_group == group }}>{{ group }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Преподаватель:</span>
+            <select class="glass" id="teacherFilter" onchange="applyFilters()" style="padding: 0.4rem; width: auto;">
+                <option value="Все">Все преподаватели</option>
+                {% for teacher in teachers %}
+                <option value="{{ teacher.id }}" {{ 'selected' if selected_teacher == teacher.id|string }}>{{ teacher.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if rbac.check(current_user.role, 'schedule', 'manage').allowed %}
+        <button class="btn btn-primary" onclick="openModal('add')">➕ Добавить</button>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function applyFilters() {
+    const group = document.getElementById('groupFilter').value;
+    const teacherId = document.getElementById('teacherFilter').value;
+    let url = new URL(window.location.href);
+    if (group !== 'Все') {
+        url.searchParams.set('group', group);
+        url.searchParams.delete('teacher_id');
+    } else if (teacherId !== 'Все') {
+        url.searchParams.set('teacher_id', teacherId);
+        url.searchParams.delete('group');
+    } else {
+        url.searchParams.delete('group');
+        url.searchParams.delete('teacher_id');
+    }
+    window.location.href = url.toString();
+}
+</script>
+
+<div class="schedule-grid">
+    {% for day in day_order %}
+    <div class="schedule-day">
+        <div class="day-header">{{ day }}</div>
+        <div class="lesson-list">
+            {% if schedule_data[day] %}
+                {% for lesson in schedule_data[day] %}
+                <div class="lesson-item card glass" style="position: relative;">
+                    <div class="lesson-time">
+                        <span class="pair-num">{{ lesson.pair }} пара</span>
+                        <span class="time-range">{{ lesson.time }}</span>
+                        {% if rbac.check(current_user.role, 'schedule', 'manage').allowed %}
+                        <div style="position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.5rem;">
+                            <button class="btn glass" style="padding: 0.2rem 0.4rem; font-size: 0.7rem;" 
+                                    onclick='openModal("edit", {{ lesson|tojson }})'>✏️</button>
+                            <form action="{{ url_for('delete_schedule', item_id=lesson.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Удалить занятие?')">
+                                <button type="submit" class="btn glass" style="padding: 0.2rem 0.4rem; font-size: 0.7rem; color: var(--error-color);">🗑️</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="lesson-name">{{ lesson.subject }}</div>
+                    <div class="lesson-meta">
+                        {% if selected_teacher and selected_teacher != 'Все' %}
+                        <span style="color: var(--warning-color); font-weight: 600;">👥 {{ lesson.study_group }}</span>
+                        {% else %}
+                        <span>👨‍🏫 {{ format_name(lesson.teacher_name) }}</span>
+                        {% endif %}
+                        <span>📍 {{ lesson.room }}</span>
+                        <span class="badge {{ 'badge-success' if lesson.format == 'Очная' else 'badge-warning' }}">{{ lesson.format }}</span>
+                    </div>
+                    <div class="lesson-type">{{ lesson.lesson_type }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-lessons">Нет занятий</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal -->
+<div id="scheduleModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card glass" style="width: 100%; max-width: 600px; padding: 2rem;">
+        <h2 id="modalTitle" style="margin-bottom: 1.5rem; color: var(--accent-color);">Занятие</h2>
+        <form id="scheduleForm" action="{{ url_for('add_schedule') }}" method="POST">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>День недели</label>
+                    <select name="day" id="f_day">
+                        {% for d in day_order %}
+                        <option value="{{ d }}">{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Пара (1-8)</label>
+                    <input type="number" name="pair" id="f_pair" min="1" max="8" required>
+                </div>
+                <div class="form-group">
+                    <label>Время (чч:мм - чч:мм)</label>
+                    <input type="text" name="time" id="f_time" required placeholder="09:00 - 10:30">
+                </div>
+                <div class="form-group">
+                    <label>Группа</label>
+                    <input type="text" name="study_group" id="f_group" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Предмет</label>
+                <input type="text" name="subject" id="f_subject" required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Преподаватель</label>
+                    <select name="teacher_id" id="f_teacher">
+                        {% for t in teachers %}
+                        <option value="{{ t.id }}">{{ t.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Аудитория</label>
+                    <input type="text" name="room" id="f_room">
+                </div>
+                <div class="form-group">
+                    <label>Тип</label>
+                    <select name="lesson_type" id="f_type">
+                        <option value="Лекция">Лекция</option>
+                        <option value="Практика">Практика</option>
+                        <option value="Лаб. работа">Лаб. работа</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Формат</label>
+                    <select name="format" id="f_format">
+                        <option value="Очная">Очная</option>
+                        <option value="Дистанционная">Дистанционная</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                <button type="button" class="btn glass" onclick="closeModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(mode, data = null) {
+    const modal = document.getElementById('scheduleModal');
+    const form = document.getElementById('scheduleForm');
+    const title = document.getElementById('modalTitle');
+    const btn = document.getElementById('submitBtn');
+    
+    if (mode === 'edit' && data) {
+        title.innerText = "Редактировать занятие";
+        btn.innerText = "Сохранить";
+        form.action = "/schedule/edit/" + data.id;
+        
+        document.getElementById('f_day').value = data.day;
+        document.getElementById('f_pair').value = data.pair;
+        document.getElementById('f_time').value = data.time;
+        document.getElementById('f_group').value = data.study_group;
+        document.getElementById('f_subject').value = data.subject;
+        document.getElementById('f_teacher').value = data.teacher_id;
+        document.getElementById('f_room').value = data.room;
+        document.getElementById('f_type').value = data.lesson_type;
+        document.getElementById('f_format').value = data.format;
+    } else {
+        title.innerText = "Добавить занятие";
+        btn.innerText = "Добавить";
+        form.action = "{{ url_for('add_schedule') }}";
+        form.reset();
+    }
+    modal.style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('scheduleModal').style.display = 'none';
+}
+</script>
+{% endblock %}

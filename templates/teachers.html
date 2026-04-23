@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Преподаватели — Виртуальный Деканат{% endblock %}
+{% block content %}
+<div class="header">
+    <h1 class="page-title">Преподавательский состав</h1>
+    {% if rbac.check(current_user.role, 'teachers', 'manage').allowed %}
+    <button class="btn btn-primary" onclick="openModal('add')">➕ Добавить преподавателя</button>
+    {% endif %}
+</div>
+
+<div class="card glass table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Кафедра</th>
+                <th>Должность</th>
+                <th>Дисциплины</th>
+                <th>Контакты</th>
+                {% if rbac.check(current_user.role, 'teachers', 'manage').allowed %}
+                <th>Действия</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in teachers %}
+            <tr>
+                <td><strong>{{ t.full_name }}</strong></td>
+                <td>{{ t.department }}</td>
+                <td>{{ t.position }} ({{ t.degree }})</td>
+                <td>
+                    {% for sub in t.subjects %}
+                    <span class="badge badge-primary" style="margin-right: 0.2rem; margin-bottom: 0.2rem; display: inline-block;">{{ sub }}</span>
+                    {% endfor %}
+                </td>
+                <td>{{ t.contacts }}</td>
+                {% if rbac.check(current_user.role, 'teachers', 'manage').allowed %}
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" 
+                                onclick='openModal("edit", {{ t|tojson }})'>✏️</button>
+                        <form action="{{ url_for('delete_teacher', teacher_id=t.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Удалить преподавателя?')">
+                            <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: var(--error-color);">🗑️</button>
+                        </form>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div id="teacherModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card glass" style="width: 100%; max-width: 600px; padding: 2rem;">
+        <h2 id="modalTitle" style="margin-bottom: 1.5rem; color: var(--accent-color);">Преподаватель</h2>
+        <form id="teacherForm" action="{{ url_for('add_teacher') }}" method="POST">
+            <div class="form-group">
+                <label>ФИО</label>
+                <input type="text" name="full_name" id="f_name" required placeholder="Петров Петр Петрович">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Кафедра</label>
+                    <input type="text" name="department" id="f_dept" required placeholder="ИУ5">
+                </div>
+                <div class="form-group">
+                    <label>Должность</label>
+                    <input type="text" name="position" id="f_pos" placeholder="Доцент">
+                </div>
+                <div class="form-group">
+                    <label>Степень</label>
+                    <input type="text" name="degree" id="f_deg" placeholder="к.т.н.">
+                </div>
+                <div class="form-group">
+                    <label>Контакты</label>
+                    <input type="text" name="contacts" id="f_contact" placeholder="petrov@mstu.ru">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Дисциплины (через запятую)</label>
+                <textarea name="subjects" id="f_subs" rows="3" placeholder="Программирование, Базы данных"></textarea>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                <button type="button" class="btn glass" onclick="closeModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(mode, data = null) {
+    const modal = document.getElementById('teacherModal');
+    const form = document.getElementById('teacherForm');
+    const title = document.getElementById('modalTitle');
+    const btn = document.getElementById('submitBtn');
+    
+    if (mode === 'edit' && data) {
+        title.innerText = "Редактировать данные";
+        btn.innerText = "Сохранить";
+        form.action = "/teachers/edit/" + data.id;
+        
+        document.getElementById('f_name').value = data.full_name;
+        document.getElementById('f_dept').value = data.department;
+        document.getElementById('f_pos').value = data.position;
+        document.getElementById('f_deg').value = data.degree;
+        document.getElementById('f_contact').value = data.contacts;
+        document.getElementById('f_subs').value = data.subjects ? data.subjects.join(', ') : "";
+    } else {
+        title.innerText = "Добавить преподавателя";
+        btn.innerText = "Добавить";
+        form.action = "{{ url_for('add_teacher') }}";
+        form.reset();
+    }
+    modal.style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('teacherModal').style.display = 'none';
+}
+</script>
+{% endblock %}

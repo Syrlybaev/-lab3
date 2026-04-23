@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Виртуальный Деканат{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script> <!-- Optional icon kit -->
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass">
+            <div class="logo">
+                <span class="logo-icon">🏛️</span>
+                <span>ДЕКАНАТ</span>
+            </div>
+            
+            <nav class="nav-links">
+                {% set menu = rbac.allowed_menu(current_user.role) %}
+                <li class="nav-item {{ 'active' if request.endpoint == 'dashboard' }}">
+                    <a href="{{ url_for('dashboard') }}">📊 Дашборд</a>
+                </li>
+                {% for item in menu %}
+                <li class="nav-item {{ 'active' if request.endpoint == item.resource }}">
+                    <a href="{{ url_for(item.resource) }}">
+                        {% if item.resource == 'schedule' %}📅{% elif item.resource == 'grades' %}📈{% elif item.resource == 'students' %}🎓{% elif item.resource == 'teachers' %}👨‍🏫{% elif item.resource == 'finance' %}💰{% elif item.resource == 'users' %}⚙️{% endif %}
+                        {{ item.title.split(' ')[-1] }}
+                    </a>
+                </li>
+                {% endfor %}
+            </nav>
+            
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-name">{{ current_user.full_name }}</span>
+                    <span class="user-role">{{ role_labels.get(current_user.role, current_user.role) }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" style="color: var(--error-color); text-decoration: none; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Выйти</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="card glass badge-{{ category }}" style="margin-bottom: 1rem; border: none;">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>
