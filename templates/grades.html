@@ -16,7 +16,9 @@
                 {% endfor %}
             </select>
         </div>
-        <button class="btn btn-primary" onclick="openModal('add')">➕ Выставить оценку</button>
+        <button class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;" onclick="openModal('add')">
+            <i data-lucide="plus-circle" style="width: 18px; height: 18px;"></i> Выставить оценку
+        </button>
     </div>
     {% endif %}
 </div>
@@ -25,18 +27,19 @@
 <div class="card glass" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem;">
     <div>
         <span style="color: var(--text-secondary);">Средний рейтинг:</span>
-        {% set total_score = 0 %}
+        {% set ns = namespace(total=0) %}
         {% set count = grades|length %}
         {% for g in grades %}
-            {% set total_score = total_score + (g.m1 + g.m2) / 2 %}
+            {% set ns.total = ns.total + (g.m1 + g.m2) / 2.0 %}
         {% endfor %}
         <span style="font-size: 1.5rem; font-weight: 700; color: var(--success-color); margin-left: 0.5rem;">
-            {{ (total_score / count)|round(1) if count > 0 else '0.0' }}
+            {{ (ns.total / count)|round(1) if count > 0 else '0.0' }}
         </span>
     </div>
-    <select class="glass" style="width: auto; padding: 0.4rem 1rem;">
-        <option>Осенний семестр 2026</option>
-        <option>Весенний семестр 2026</option>
+    <select class="glass" id="semesterFilter" onchange="applyFilter()" style="width: auto; padding: 0.4rem 1rem;">
+        {% for sem in all_semesters %}
+        <option value="{{ sem }}" {{ 'selected' if selected_semester == sem }}>{{ sem }}</option>
+        {% endfor %}
     </select>
 </div>
 {% endif %}
@@ -82,10 +85,14 @@
                 {% if current_user.role in ['teacher', 'administrator'] %}
                 <td>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" 
-                                onclick='openModal("edit", {{ g|tojson }})'>✏️</button>
+                        <button class="btn glass" style="padding: 0.3rem 0.6rem;" 
+                                onclick='openModal("edit", {{ g|tojson }})'>
+                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                        </button>
                         <form action="{{ url_for('delete_grade', grade_id=g.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Удалить оценку?')">
-                            <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: var(--error-color);">🗑️</button>
+                            <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; color: var(--error-color);">
+                                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                            </button>
                         </form>
                     </div>
                 </td>
@@ -166,8 +173,23 @@
 
 <script>
 function applyFilter() {
-    const group = document.getElementById('groupFilter').value;
-    window.location.href = "{{ url_for('grades') }}?group=" + group;
+    let url = new URL(window.location.href);
+    
+    const groupSelect = document.getElementById('groupFilter');
+    if (groupSelect) {
+        if (groupSelect.value !== 'Все') {
+            url.searchParams.set('group', groupSelect.value);
+        } else {
+            url.searchParams.delete('group');
+        }
+    }
+    
+    const semSelect = document.getElementById('semesterFilter');
+    if (semSelect) {
+        url.searchParams.set('semester', semSelect.value);
+    }
+    
+    window.location.href = url.toString();
 }
 
 function openModal(mode, gradeData = null) {

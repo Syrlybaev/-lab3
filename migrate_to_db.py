@@ -53,8 +53,8 @@ def migrate():
 
         # Перенос оценок
         for g in GRADE_RECORDS:
-            credit = 'Зачет' if g['control_type'] == 'Зачет' else '-'
-            exam = 'Экзамен' if g['control_type'] == 'Экзамен' else '-'
+            credit = '40' if g['control_type'] == 'Зачет' else '-'
+            exam = '40' if g['control_type'] == 'Экзамен' else '-'
             cursor.execute("""
                 INSERT INTO grades (id, student_id, teacher_id, subject, semester, control_type, m1, m2, credit, exam, coefficient, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

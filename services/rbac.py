@@ -8,6 +8,7 @@ ACL: dict[str, dict[str, set[str]]] = {
     "schedule": {
         "view":   {"student", "teacher", "administrator"},
         "edit":   {"administrator"},
+        "manage": {"administrator"},
     },
     "grades": {
         "view_own": {"student"},
@@ -27,19 +28,19 @@ ACL: dict[str, dict[str, set[str]]] = {
         "manage": {"administrator"},
     },
     "finance": {
-        "view_own": {"student"},
+        "view_own": {"student", "teacher"},
         "view_all": {"accountant", "administrator"},
         "manage":   {"accountant", "administrator"},
     },
 }
 
 MENU_SECTIONS: list[dict[str, str]] = [
-    {"resource": "schedule", "title": "📅  Расписание"},
-    {"resource": "grades",   "title": "📊  Оценки"},
-    {"resource": "students", "title": "🎓  Студенты"},
-    {"resource": "teachers", "title": "👨‍🏫  Преподаватели"},
-    {"resource": "finance",  "title": "💰  Бухгалтерия"},
-    {"resource": "users",    "title": "⚙️  Пользователи"},
+    {"resource": "schedule", "title": "Расписание"},
+    {"resource": "grades",   "title": "Оценки"},
+    {"resource": "students", "title": "Студенты"},
+    {"resource": "teachers", "title": "Преподаватели"},
+    {"resource": "finance",  "title": "Бухгалтерия"},
+    {"resource": "users",    "title": "Пользователи"},
 ]
 
 

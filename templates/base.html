@@ -8,27 +8,42 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script> <!-- Optional icon kit -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar glass">
             <div class="logo">
-                <span class="logo-icon">🏛️</span>
+                <i data-lucide="landmark" class="logo-icon"></i>
                 <span>ДЕКАНАТ</span>
             </div>
             
             <nav class="nav-links">
                 {% set menu = rbac.allowed_menu(current_user.role) %}
                 <li class="nav-item {{ 'active' if request.endpoint == 'dashboard' }}">
-                    <a href="{{ url_for('dashboard') }}">📊 Дашборд</a>
+                    <a href="{{ url_for('dashboard') }}">
+                        <i data-lucide="layout-dashboard"></i>
+                        Дашборд
+                    </a>
                 </li>
                 {% for item in menu %}
                 <li class="nav-item {{ 'active' if request.endpoint == item.resource }}">
                     <a href="{{ url_for(item.resource) }}">
-                        {% if item.resource == 'schedule' %}📅{% elif item.resource == 'grades' %}📈{% elif item.resource == 'students' %}🎓{% elif item.resource == 'teachers' %}👨‍🏫{% elif item.resource == 'finance' %}💰{% elif item.resource == 'users' %}⚙️{% endif %}
-                        {{ item.title.split(' ')[-1] }}
+                        {% if item.resource == 'schedule' %}
+                            <i data-lucide="calendar"></i>
+                        {% elif item.resource == 'grades' %}
+                            <i data-lucide="bar-chart-3"></i>
+                        {% elif item.resource == 'students' %}
+                            <i data-lucide="graduation-cap"></i>
+                        {% elif item.resource == 'teachers' %}
+                            <i data-lucide="users"></i>
+                        {% elif item.resource == 'finance' %}
+                            <i data-lucide="wallet"></i>
+                        {% elif item.resource == 'users' %}
+                            <i data-lucide="settings"></i>
+                        {% endif %}
+                        {{ item.title }}
                     </a>
                 </li>
                 {% endfor %}
@@ -39,7 +54,10 @@
                     <span class="user-name">{{ current_user.full_name }}</span>
                     <span class="user-role">{{ role_labels.get(current_user.role, current_user.role) }}</span>
                 </div>
-                <a href="{{ url_for('logout') }}" style="color: var(--error-color); text-decoration: none; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Выйти</a>
+                <a href="{{ url_for('logout') }}" style="color: var(--error-color); text-decoration: none; font-size: 0.85rem; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+                    Выйти
+                </a>
             </div>
         </aside>
 
@@ -56,5 +74,8 @@
             {% block content %}{% endblock %}
         </main>
     </div>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

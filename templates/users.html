@@ -4,7 +4,9 @@
 <div class="header">
     <h1 class="page-title">Управление доступом</h1>
     {% if rbac.check(current_user.role, 'users', 'manage').allowed %}
-    <button class="btn btn-primary" onclick="openModal('add')">➕ Новый пользователь</button>
+    <button class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;" onclick="openModal('add')">
+        <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i> Новый пользователь
+    </button>
     {% endif %}
 </div>
 
@@ -33,10 +35,14 @@
                 {% if rbac.check(current_user.role, 'users', 'manage').allowed %}
                 <td>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" 
-                                onclick='openModal("edit", {{ u|tojson }})'>✏️</button>
+                        <button class="btn glass" style="padding: 0.3rem 0.6rem;" 
+                                onclick='openModal("edit", {{ u|tojson }})'>
+                            <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                        </button>
                         <form action="{{ url_for('delete_user', login=u.login) }}" method="POST" style="display:inline;" onsubmit="return confirm('Удалить пользователя?')">
-                            <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: var(--error-color);">🗑️</button>
+                            <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; color: var(--error-color);">
+                                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                            </button>
                         </form>
                     </div>
                 </td>

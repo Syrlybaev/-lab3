@@ -37,8 +37,8 @@ def require_login():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        login_val = request.form.get('login')
-        password_val = request.form.get('password')
+        login_val = request.form.get('login', '').strip()
+        password_val = request.form.get('password', '').strip()
         
         user = auth.authenticate_password(login_val, password_val)
         if user:
@@ -87,11 +87,11 @@ def schedule():
     # Применение фильтров
     if selected_group and selected_group != 'Все':
         all_schedule = [s for s in all_schedule if s['study_group'] == selected_group]
-    elif selected_teacher and selected_teacher != 'Все':
+    
+    if selected_teacher and selected_teacher != 'Все':
         all_schedule = [s for s in all_schedule if str(s['teacher_id']) == selected_teacher]
-    else:
-        # По умолчанию для студентов и преподавателей
-        if not selected_group and not selected_teacher:
+        
+    if not selected_group and not selected_teacher:
             if user['role'] == 'student' and user['student_id']:
                 student = next((s for s in db.get_students() if s['id'] == user['student_id']), None)
                 if student:
@@ -183,9 +183,17 @@ def grades():
     all_students = db.get_students()
     students_dict = {s['id']: s for s in all_students}
     teachers_dict = {t['id']: t for t in db.get_teachers()}
+    all_semesters = sorted(list(set(g.get('semester', '-') for g in all_grades)), reverse=True)
+    selected_semester = request.args.get('semester')
+    if not selected_semester and all_semesters:
+        selected_semester = all_semesters[0]
     
     selected_group = request.args.get('group')
     
+    # Сначала фильтруем по семестру
+    if selected_semester:
+        all_grades = [g for g in all_grades if g.get('semester') == selected_semester]
+
     # Фильтрация по роли
     if user['role'] == 'student':
         all_grades = [g for g in all_grades if g['student_id'] == user['student_id']]
@@ -217,6 +225,8 @@ def grades():
                            teachers=teachers_dict, 
                            groups=groups,
                            selected_group=selected_group,
+                           all_semesters=all_semesters,
+                           selected_semester=selected_semester,
                            grade_label=grade_label)
 
 @app.route('/grades/update', methods=['POST'])
@@ -279,11 +289,27 @@ def finance():
     user = session['user']
     all_finance = db.get_finance()
     students = {s['id']: s for s in db.get_students()}
+    teachers = {t['id']: t for t in db.get_teachers()}
+    
+    FINANCE_TYPES = {
+        "tuition":          "Оплата обучения",
+        "dorm":             "Оплата общежития",
+        "scholarship_base": "Академическая стипендия",
+        "scholarship_high": "Повышенная стипендия",
+        "social":           "Социальная выплата",
+        "salary":           "Зарплата преподавателя",
+        "bonus":            "Премия"
+    }
     
     if user['role'] == 'student':
-        all_finance = [f for f in all_finance if f['student_id'] == user['student_id']]
+        all_finance = [f for f in all_finance if f.get('student_id') == user['student_id']]
+    elif user['role'] == 'teacher':
+        all_finance = [f for f in all_finance if f.get('teacher_id') == user['teacher_id']]
         
-    return render_template('finance.html', finance_data=all_finance, students=students)
+    for f in all_finance:
+        f['op_type'] = FINANCE_TYPES.get(f['op_type'], f['op_type'])
+        
+    return render_template('finance.html', finance_data=all_finance, students=students, teachers=teachers)
 
 @app.route('/students')
 def students():
@@ -444,12 +470,14 @@ def delete_user(login):
 def add_finance():
     if session['user']['role'] not in ['administrator', 'accountant']:
         return "Доступ запрещен", 403
-    student_id_val = int(request.form.get('student_id'))
+    student_id_raw = request.form.get('student_id', '0')
+    student_id_val = int(student_id_raw) if student_id_raw else 0
     op_type = request.form.get('type')
     amount = float(request.form.get('amount'))
     
     data = {
         'student_id': student_id_val if student_id_val > 0 else None,
+        'teacher_id': None, # Simplification, admin can only add to students from UI right now
         'op_type': op_type,
         'amount': amount,
         'period': '2026-04',

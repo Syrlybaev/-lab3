@@ -4,7 +4,9 @@
 <div class="header">
     <h1 class="page-title">Финансовый учёт</h1>
     {% if current_user.role in ['administrator', 'accountant'] %}
-    <button class="btn btn-primary" onclick="openModal()">➕ Создать операцию</button>
+    <button class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;" onclick="openModal()">
+        <i data-lucide="plus" style="width: 18px; height: 18px;"></i> Создать операцию
+    </button>
     {% endif %}
 </div>
 
@@ -38,7 +40,13 @@
             {% for f in finance_data %}
             <tr>
                 <td>{{ f.date }}</td>
-                <td>{{ students[f.student_id].full_name if f.student_id in students else 'Система' }}</td>
+                <td>
+                    {% if f.teacher_id %}
+                        {{ teachers[f.teacher_id].full_name if f.teacher_id in teachers else 'Преподаватель' }} (П)
+                    {% else %}
+                        {{ students[f.student_id].full_name if f.student_id in students else 'Студент/Система' }}
+                    {% endif %}
+                </td>
                 <td>
                     <span class="badge {{ 'badge-success' if f.op_type == 'Оплата' else 'badge-warning' }}">
                         {{ f.op_type }}
@@ -52,7 +60,9 @@
                 {% if current_user.role in ['administrator', 'accountant'] %}
                 <td>
                     <form action="{{ url_for('delete_finance', op_id=f.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Удалить операцию?')">
-                        <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; color: var(--error-color);">🗑️</button>
+                        <button type="submit" class="btn glass" style="padding: 0.3rem 0.6rem; color: var(--error-color);">
+                            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        </button>
                     </form>
                 </td>
                 {% endif %}

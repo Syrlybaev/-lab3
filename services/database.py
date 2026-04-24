@@ -123,6 +123,7 @@ class DatabaseService:
                 CREATE TABLE IF NOT EXISTS finance (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     student_id INTEGER,
+                    teacher_id INTEGER,
                     op_type TEXT,
                     amount REAL,
                     period TEXT,
@@ -130,7 +131,8 @@ class DatabaseService:
                     status TEXT,
                     sign INTEGER,
                     comment TEXT,
-                    FOREIGN KEY(student_id) REFERENCES students(id)
+                    FOREIGN KEY(student_id) REFERENCES students(id),
+                    FOREIGN KEY(teacher_id) REFERENCES teachers(id)
                 )
             """)
             
@@ -316,8 +318,8 @@ class DatabaseService:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO finance (student_id, op_type, amount, period, date, status, sign, comment)
-                VALUES (:student_id, :op_type, :amount, :period, :date, :status, :sign, :comment)
+                INSERT INTO finance (student_id, teacher_id, op_type, amount, period, date, status, sign, comment)
+                VALUES (:student_id, :teacher_id, :op_type, :amount, :period, :date, :status, :sign, :comment)
             """, data)
             conn.commit()
             return cursor.lastrowid
@@ -327,7 +329,7 @@ class DatabaseService:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE finance SET 
-                student_id = :student_id, op_type = :op_type, amount = :amount, 
+                student_id = :student_id, teacher_id = :teacher_id, op_type = :op_type, amount = :amount, 
                 period = :period, date = :date, status = :status, sign = :sign, comment = :comment
                 WHERE id = :id
             """, {**data, 'id': op_id})

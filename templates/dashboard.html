@@ -39,13 +39,29 @@
     <div class="card glass">
         <h3 style="margin-bottom: 1.5rem;">Быстрые ссылки</h3>
         <div class="nav-links">
-            <li class="nav-item"><a href="{{ url_for('schedule') }}">📅 Посмотреть расписание</a></li>
+            <li class="nav-item">
+                <a href="{{ url_for('schedule') }}" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="calendar"></i> Посмотреть расписание
+                </a>
+            </li>
             {% if current_user.role == 'student' %}
-            <li class="nav-item"><a href="{{ url_for('grades') }}">📈 Мои оценки</a></li>
-            <li class="nav-item"><a href="{{ url_for('finance') }}">💰 Оплатить обучение</a></li>
+            <li class="nav-item">
+                <a href="{{ url_for('grades') }}" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="bar-chart-3"></i> Мои оценки
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('finance') }}" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="wallet"></i> Финансы и оплата
+                </a>
+            </li>
             {% endif %}
             {% if current_user.role == 'administrator' %}
-            <li class="nav-item"><a href="{{ url_for('users') }}">⚙️ Управление пользователями</a></li>
+            <li class="nav-item">
+                <a href="{{ url_for('users') }}" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="settings"></i> Управление пользователями
+                </a>
+            </li>
             {% endif %}
         </div>
     </div>
